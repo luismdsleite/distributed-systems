@@ -7,8 +7,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 
+/**
+ * Sends/Receives a {@code long} via TCP.
+ */
 public class numMsgHandlerTCP implements msgHandler {
-
 
   @Override
   public Boolean sendMsg(

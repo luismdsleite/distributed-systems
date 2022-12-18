@@ -8,12 +8,10 @@ import com.distributed_system.msgHandler;
 public class SendToken {
 
   public static void main(String[] args) throws UnknownHostException {
-    var host1 = InetAddress.getByName("127.0.0.1");
-    var host2 = InetAddress.getByName("127.0.0.2");
-    var host3 = InetAddress.getByName("127.0.0.3");
+    var targetAddr = InetAddress.getByName(args[0]);
 
     msgHandler handler = new numMsgHandlerTCP();
-    handler.sendMsg( (long) 0, host1, TokenRing.defaultPort);
+    handler.sendMsg( (long) 0, targetAddr, TokenRing.PORT);
 
   }
 }
