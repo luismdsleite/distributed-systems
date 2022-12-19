@@ -9,7 +9,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class TokenRing {
   private InetAddress hostAddr; // IP where this server is hosted on.
   private InetAddress nextHost; // IP to send token to.
-  private Boolean isLocked = true; // Locked or Unlocked.
+  private volatile Boolean isLocked = true; // Locked or Unlocked.
   msgHandler handler; // Handles sending of messages via the Transport Layer.
   public static final int PORT = 6666; // Port server is being hosted on.
   private static final int RETRY_WAIT_TIME = 500; // If a msg transmission fails we wait this amount of time in milliseconds until the next transmission.
