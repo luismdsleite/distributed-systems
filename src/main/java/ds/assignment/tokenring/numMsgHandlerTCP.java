@@ -1,11 +1,12 @@
-package com.distributed_system.tokenRing;
+package ds.assignment.tokenring;
 
-import com.distributed_system.msgHandler;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+
+import ds.assignment.msgHandler;
 
 /**
  * Sends/Receives a {@code long} via TCP.

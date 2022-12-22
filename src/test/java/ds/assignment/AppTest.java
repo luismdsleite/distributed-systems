@@ -1,4 +1,4 @@
-package com.distributed_system;
+package ds.assignment;
 
 import static org.junit.Assert.assertTrue;
 

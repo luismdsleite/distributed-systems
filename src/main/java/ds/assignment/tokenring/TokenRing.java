@@ -1,10 +1,11 @@
-package com.distributed_system.tokenRing;
+package ds.assignment.tokenring;
 
-import com.distributed_system.msgHandler;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
+
+import ds.assignment.msgHandler;
 
 public class TokenRing {
   private InetAddress hostAddr; // IP where this server is hosted on.

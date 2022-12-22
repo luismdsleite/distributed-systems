@@ -1,9 +1,9 @@
-package com.distributed_system.tokenRing;
+package ds.assignment.tokenring;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import com.distributed_system.msgHandler;
+import ds.assignment.msgHandler;
 
 public class SendToken {
 

@@ -1,4 +1,4 @@
-package com.distributed_system;
+package ds.assignment;
 
 /**
  * Hello world!
