@@ -8,7 +8,7 @@ public class HostChecker {
   );
   
   /**
-   * Check if the the string {@code ip} is in a valid IPv4.
+   * Check if the the string {@code ipv4} is in a valid IPv4 format.
    * <p>
    * Note: Can be improved with the use of an external library like https://github.com/seancfoley/IPAddress.
    * https://stackoverflow.com/questions/61001216/how-can-i-check-if-a-string-is-ipv4-ipv6-or-domain-name-java
