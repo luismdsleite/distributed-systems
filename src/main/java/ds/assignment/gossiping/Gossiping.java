@@ -174,11 +174,25 @@ public class Gossiping {
                       System.out.println("msgDropChance = " + msgDropChance);
                       continue;
                     default:
-                      System.err.println("Invalid command: " + cmd + " " + arg);
+                      System.err.println("Invalid command: " + cmd + " " + arg + "\n"
+                          + "use \"get help\" to see all available commands");
                       continue;
                   }
                 case "get":
                   switch (arg) {
+                    case "help":
+                      System.out.println("Available Commands" + "\n" +
+                          "\t" + "register {ipv4}/unregister {ipv4}" + "\n" +
+                          "\t" + "send {ipv4} {msg}" + "\n" +
+                          "\t" + "get all" + "\n" +
+                          "\t" + "get words" + "\n" +
+                          "\t" + "get hosts" + "\n" +
+                          "\t" + "get banned" + "\n" +
+                          "\t" + "get gossipRate" + "\n" +
+                          "\t" + "get dropChance" + "\n" +
+                          "\t" + "set gossipRate" + "\n" +
+                          "\t" + "set dropChance");
+                      continue;
                     case "hosts":
                       System.out.println(hostsSet);
                       continue;
@@ -195,18 +209,23 @@ public class Gossiping {
                       System.out.println(msgDropChance);
                       continue;
                     case "all":
+                      System.out.println("No. of Hosts = " + hostsSet.size());
                       System.out.println("Hosts = " + hostsSet);
+                      System.out.println("No. of Words = " + wordsSet.size());
                       System.out.println("Words = " + wordsSet);
+                      System.out.println("No. of Banned Words = " + bannedWordsSet.size());
                       System.out.println("Ignored Words (not propagated) = " + bannedWordsSet);
                       System.out.println("Gossip Rate = " + gossipRate);
                       System.out.println("Msg Drop Chance = " + msgDropChance);
                       continue;
                     default:
-                      System.err.println("Invalid command: " + cmd + " " + arg);
+                      System.err.println("Invalid command: " + cmd + " " + arg + "\n"
+                          + "use \"get help\" to see all available commands");
                       continue;
                   }
                 default:
-                  System.err.println("Invalid Command:" + cmd + " " + arg);
+                  System.err.println(
+                      "Invalid Command:" + cmd + " " + arg + "\n" + "use \"get help\" to see all available commands");
                   break;
               }
             }
