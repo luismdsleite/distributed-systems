@@ -1,13 +1,10 @@
 package ds.assignment.gossiping;
 
-import ds.assignment.HostChecker;
-import ds.assignment.msgHandler;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
@@ -20,8 +17,28 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.Vector;
 
+import ds.assignment.HostChecker;
+import ds.assignment.PoissonJob;
+import ds.assignment.PoissonJobScheduler;
+import ds.assignment.msgHandler;
+
+/**
+ * <p>
+ * Server running a Gossip Protocol.
+ * <p>
+ * Composed by 3 threads:
+ * <ul>
+ * <li>stdinThread: Receives input from user to execute a certain command (check
+ * #stdinThread method for details)</li>
+ * <li>poissonWordsGenerator: Injects random words onto the network to simulate
+ * meta information of servers</li>
+ * <li>connReceiver: Propagates received words via gossip protocol</li>
+ * </ul>
+ */
 public class Gossiping {
   private InetAddress hostAddr; // IP where this server is hosted on.
+
+  // Connection Receiver Thread parameters.
   private volatile List<String> hostsSet = new Vector<>();
   private volatile Set<String> wordsSet = new HashSet<>();
   private volatile Set<String> bannedWordsSet = new HashSet<>();
@@ -29,16 +46,28 @@ public class Gossiping {
   public static final int PORT = 6666; // Port server is being hosted on.
   public static final int MAX_MSG_LENGTH = 512; // Maximum msg size (in bytes)
   private static final Random random = new Random();
+
+  // Input Thread parameters.
   private double msgDropChance = 0.20; // Chance of a msg already present in the wordsSet to be dropped.
   private int gossipRate = 3; // How many hosts to gossip at a time.
+
+  // Poisson Words Generator Thread parameters.
+  private static final double LAMBDA = 1 / (double) 30; // Lambda of the poissonWordsGenerator. Currently on average generates 1 event per 30 seconds.
+                                       // every minute
+  private static final File WORDS_FILE = new File("resources/4000-most-common-english-words-csv.csv"); // File
+                                                                                                       // containing
+                                                                                                       // the words used
+                                                                                                       // by the thread.
 
   public Gossiping(InetAddress hostAddr) {
     this.hostAddr = hostAddr;
     // handler = new numMsgHandlerTCP();
-    var inputThread = stdinThread();
-    this.start();
-    connReceiver().start();
-    inputThread.start();
+    try {
+      start();
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
   }
 
   public Gossiping(InetAddress hostAddr, List<String> registeredUsers) {
@@ -47,10 +76,16 @@ public class Gossiping {
   }
 
   /**
-   * Infinite Loop. Receive the token, execute some work, send the token, repeat.
+   * Starts all the threads.
+   * 
+   * @throws IOException
    */
-  private void start() {
+  private void start() throws IOException {
     System.out.println("Starting " + hostAddr);
+    var inputThread = stdinThread();
+    connReceiver().start();
+    inputThread.start();
+    poissonWordsGenerator();
   }
 
   /**
@@ -122,6 +157,7 @@ public class Gossiping {
                     DatagramChannel client = DatagramChannel.open();
                     ByteBuffer buffer = ByteBuffer.wrap(msg.getBytes());
                     client.send(buffer, new InetSocketAddress(arg, PORT));
+                    client.close();
                   } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
@@ -263,6 +299,33 @@ public class Gossiping {
             }
           }
         });
+  }
+
+  /**
+   * Injects words to the network at a poisson distribution rate.
+   * 
+   * @param lambda
+   * @throws IOException if it failed to get a UDP socket.
+   */
+  private void poissonWordsGenerator() throws IOException {
+    Random wordsRNG = new Random();
+    List<String> words = new ArrayList<>();
+    try {
+      // Store all words in a list
+      Scanner scanner = new Scanner(WORDS_FILE);
+      scanner.next(); // First occurrence is not a word!
+      while (scanner.hasNext()) {
+        words.add(scanner.next());
+      }
+      scanner.close();
+      var scheduler = new PoissonJobScheduler(LAMBDA, new Random(), new SendWords(words, hostAddr, PORT, wordsRNG));
+      scheduler.schedulerThread().start();
+      System.out.println("Started Poisson Word Generator Thread.");
+    } catch (FileNotFoundException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+
   }
 
   /**
