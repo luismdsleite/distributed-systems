@@ -18,7 +18,6 @@ import java.util.Set;
 import java.util.Vector;
 
 import ds.assignment.HostChecker;
-import ds.assignment.PoissonJob;
 import ds.assignment.PoissonJobScheduler;
 import ds.assignment.msgHandler;
 
@@ -52,27 +51,32 @@ public class Gossiping {
   private int gossipRate = 3; // How many hosts to gossip at a time.
 
   // Poisson Words Generator Thread parameters.
-  private static final double LAMBDA = 1 / (double) 30; // Lambda of the poissonWordsGenerator. Currently on average generates 1 event per 30 seconds.
-                                       // every minute
+  private static final double LAMBDA = 1 / (double) 30; // Lambda of the poissonWordsGenerator. Currently on average
+  // generates 1 event per 30 seconds.
+  // every minute
   private static final File WORDS_FILE = new File("resources/4000-most-common-english-words-csv.csv"); // File
-                                                                                                       // containing
-                                                                                                       // the words used
-                                                                                                       // by the thread.
+  // containing
+  // the words used
+  // by the thread.
 
-  public Gossiping(InetAddress hostAddr) {
+  public Gossiping(InetAddress hostAddr, boolean startPoisson) {
     this.hostAddr = hostAddr;
     // handler = new numMsgHandlerTCP();
     try {
-      start();
+      start(startPoisson);
     } catch (IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
   }
 
-  public Gossiping(InetAddress hostAddr, List<String> registeredUsers) {
-    this(hostAddr);
+  public Gossiping(InetAddress hostAddr, List<String> registeredUsers, boolean startPoisson) {
+    this(hostAddr, startPoisson);
     this.hostsSet.addAll(registeredUsers);
+  }
+
+  public Gossiping(InetAddress hostAddr, List<String> registeredUsers) {
+    this(hostAddr, registeredUsers, true);
   }
 
   /**
@@ -80,12 +84,13 @@ public class Gossiping {
    * 
    * @throws IOException
    */
-  private void start() throws IOException {
+  private void start(boolean startPoisson) throws IOException {
     System.out.println("Starting " + hostAddr);
     var inputThread = stdinThread();
     connReceiver().start();
     inputThread.start();
-    poissonWordsGenerator();
+    if (startPoisson)
+      poissonWordsGenerator();
   }
 
   /**
@@ -361,10 +366,24 @@ public class Gossiping {
     }
 
     var host = InetAddress.getByName(args[0]);
-    if (args_.size() == 1) {
-      new Gossiping(host);
+    if (args_.size() < 0) {
+      System.err.println(Gossiping.class.getName() + " HOST_ADDRESS STATE_BOOLEAN [PEERS_ADDRESSES]");
     } else {
-      new Gossiping(host, args_.subList(1, args_.size()));
+      boolean poissonState;
+      if (args_.get(1).equals("true"))
+        poissonState = true;
+      else if (args_.get(1).equals("false"))
+        poissonState = false;
+      else {
+        System.err.println("STATE_BOOLEAN must be true or false");
+        return;
+      }
+      if (args_.size() == 2) {
+        new Gossiping(host, poissonState);
+      } else {
+        new Gossiping(host, args_.subList(2, args_.size()), poissonState);
+      }
+
     }
   }
 }
