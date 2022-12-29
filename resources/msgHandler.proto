@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option java_package = "ds.assignment.tokenring";
+
+service msgHandler{
+    rpc sendMsg(Message) returns (Empty);
+}
+
+message Message{
+    string msg = 1 ;
+}
+
+message Empty{
+
+}
