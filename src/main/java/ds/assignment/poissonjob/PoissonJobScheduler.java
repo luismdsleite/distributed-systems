@@ -1,4 +1,4 @@
-package ds.assignment;
+package ds.assignment.poissonjob;
 
 import java.util.Random;
 

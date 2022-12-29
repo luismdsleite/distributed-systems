@@ -1,5 +1,5 @@
 
-package ds.assignment;
+package ds.assignment.poissonjob;
 
 /**
  * Job executed by the {@code ds.assignment.PoissonJobScheduler} multiple times

@@ -18,8 +18,8 @@ import java.util.Set;
 import java.util.Vector;
 
 import ds.assignment.HostChecker;
-import ds.assignment.PoissonJobScheduler;
 import ds.assignment.msgHandler;
+import ds.assignment.poissonjob.PoissonJobScheduler;
 
 /**
  * <p>

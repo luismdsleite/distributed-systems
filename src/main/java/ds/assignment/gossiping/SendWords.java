@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
-import ds.assignment.PoissonJob;
+import ds.assignment.poissonjob.PoissonJob;
 
 public class SendWords implements PoissonJob {
     private final List<String> strings;
