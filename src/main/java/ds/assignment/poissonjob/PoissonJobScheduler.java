@@ -4,11 +4,15 @@ import java.util.Random;
 
 import poisson.PoissonProcess;
 
+/**
+ * <p> Executes an arbitrary job infinitely with a Poisson distribution. </p>
+ * <p> The job must implement the {@code ds.assignment.poissonjob.PoissonJob} interface. </p>
+ */
 public class PoissonJobScheduler {
     private double lambda;
     private PoissonJob job;
     private Random rng;
-    
+
     public PoissonJobScheduler(double lambda, Random rng, PoissonJob job) {
         this.lambda = lambda;
         this.job = job;
@@ -18,7 +22,6 @@ public class PoissonJobScheduler {
     public double getLambda() {
         return lambda;
     }
-
 
     public Thread schedulerThread() {
         return new Thread(
