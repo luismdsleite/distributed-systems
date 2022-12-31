@@ -11,43 +11,46 @@ import java.util.List;
 import java.util.Random;
 
 import ds.assignment.poissonjob.PoissonJob;
+import generated.msgHandlerGrpc;
+import generated.MsgHandler.Msg;
+import generated.msgHandlerGrpc.msgHandlerBlockingStub;
+import io.grpc.ManagedChannelBuilder;
 
 public class SendWords implements PoissonJob {
     private final List<String> strings;
-    private InetAddress host;
+    private String host;
     private int port;
-    private DatagramChannel channel;
     private Random rng;
 
     /**
-     * PoissonJob to send words to a server via UDP.
+     * PoissonJob to send words to a server via gRPC.
      * 
-     * @param words words sent via UDP to the server.
+     * @param words words sent via gRPC to the server.
      * @param host  IPv4 of the server.
      * @param port  UDP port.
      * @throws IOException
      */
-    SendWords(List<String> words, InetAddress host, int port, Random rng) throws IOException {
+    SendWords(List<String> words, String host, int port, Random rng){
         this.strings = words;
         this.host = host;
         this.port = port;
-        this.channel = DatagramChannel.open();
         this.rng = rng;
     }
 
     @Override
     public void execute() {
-        try {
-            if (strings.size() > 0) {
-                var word = strings.get(rng.nextInt(strings.size()));
-                strings.remove(word);
-                ByteBuffer buffer = ByteBuffer.wrap(word.getBytes());
-                channel.send(buffer, new InetSocketAddress(host, port));
-                System.out.println("Poisson: Injected to the network the word: " + word);
-            }
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        if (strings.size() > 0) {
+
+            var word = strings.get(rng.nextInt(strings.size()));
+            // Connect to the target and send him the word.
+            var channel = ManagedChannelBuilder.forAddress(host, port)
+                    .usePlaintext()
+                    .build();
+            msgHandlerBlockingStub handlerStub = msgHandlerGrpc.newBlockingStub(channel);
+            Msg newMsg = Msg.newBuilder().setMsg(word).build();
+            handlerStub.sendMsg(newMsg);
+            strings.remove(word);
+            System.out.println("Poisson: Injected to the network the word: " + word);
         }
 
     }

@@ -11,6 +11,7 @@ The tokenRing server accepts the following commands:
 <ul>
 <li><b>lock</b>: locks the token (as soon as it's received).
 <li><b>unlock</b>: unlocks the token (as soon as it's received).
+<li><b>startToken</b>: Creates a token.
 </ul>
 
 # Gossiping

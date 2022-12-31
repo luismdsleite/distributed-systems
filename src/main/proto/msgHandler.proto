@@ -1,0 +1,15 @@
+syntax = "proto3";
+package proto;
+option java_package = "generated";
+
+service msgHandler{
+    rpc sendMsg(Msg) returns (Empty);
+}
+
+message Msg{
+    string msg = 1 ;
+}
+
+message Empty{
+
+}
