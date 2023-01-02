@@ -57,14 +57,15 @@ public class MulticastService extends lamportMsgHandlerImplBase {
   }
 
   /**
-   * Ack request.
+   * Ack request. gRPC
    */
   @Override
   public void ackEvent(Ack request, StreamObserver<Empty> responseObserver) {
     var rcvPid = request.getPid();
     var rcvClock = request.getClock();
     var eventID = request.getEventId();
-    var event = new AckEvent(rcvPid, rcvClock, eventID);
+    var eventPID = request.getEventPid();
+    var event = new AckEvent(rcvPid, rcvClock, eventID, eventPID);
     onRcvClockUpdate(rcvClock);
     delayQueue.add(event);
     responseObserver.onNext(Empty.newBuilder().build());
@@ -72,7 +73,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
   }
 
   /**
-   * Get request.
+   * Get request. gRPC
    */
   @Override
   public void getValue(Get request, StreamObserver<Empty> responseObserver) {
@@ -116,7 +117,9 @@ public class MulticastService extends lamportMsgHandlerImplBase {
    * @return updated Lamport clock.
    */
   private long onRcvClockUpdate(long logical_clock) {
-    return (this.logical_clock = Math.max(this.logical_clock, logical_clock));
+    return (
+      this.logical_clock = Math.max(this.logical_clock, logical_clock) + 1
+    );
   }
 
   /**
@@ -141,20 +144,21 @@ public class MulticastService extends lamportMsgHandlerImplBase {
 
   /**
    * Sends a Ack msg to all hosts in the {@link #hosts} list, it also adds the Ack msg to the {@link #delayQueue}.
-   * @param ackPid
+   * @param eventPID PID of the server who issued the Get/Put Event
    * @param ackClock
    * @param eventId
    */
-  private void sendAcks(int ackPid, long ackClock, long eventId) {
+  private void sendAcks(int eventPID, long ackClock, long eventId) {
     // Add Ack Event to our own delay queue.
-    delayQueue.add(new AckEvent(ackPid, ackClock, eventId));
+    delayQueue.add(new AckEvent(this.pid, ackClock, eventId, eventPID));
 
     // Create the Ack Msg and send it to every host.
     Ack ackMsg = Ack
       .newBuilder()
-      .setPid(ackPid)
+      .setPid(this.pid)
       .setClock(ackClock)
       .setEventId(eventId)
+      .setEventPid(eventPID)
       .build();
     for (String target : hosts) {
       // Connect to the target and send him the Ack msg. On Failure case retry.
@@ -174,7 +178,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
    * Event Type:
    * <ul>
    * <li> {@link ds.assignment.multicast.lamport.AckEvent}: Remove the event from the delay queue.
-   * <li> {@link ds.assignment.multicast.lamport.GetEvent} or {@link ds.assignment.multicast.lamport.PutEvent}: Delivers an event and removes it from the queue if we have a matching Ack Event for each host in the queue.
+   * <li> {@link ds.assignment.multicast.lamport.GetEvent} or {@link ds.assignment.multicast.lamport.PutEvent}: Delivers an event and removes it from the queue if we have a matching Event for each host in the network.
    * <li> Any Other Event: Prints to stderr.
    * <ul>
    * </p>
@@ -196,7 +200,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
               delayQueue.remove(event);
               continue;
             }
-            // Block the queue
+            // Lock the queue
             synchronized (delayQueue) {
               // Put or Get Events
               if (event instanceof PutEvent || event instanceof GetEvent) {
@@ -212,11 +216,9 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                 it.next(); // Ignore the head of the queue
                 while (it.hasNext()) {
                   var eventInQueue = it.next();
-                  if (eventInQueue.getEventID() == event.getEventID()) {
-                    hostsPID.remove(eventInQueue.getPid());
-                  }
+                  hostsPID.remove(eventInQueue.getPid());
                 }
-                // If HostsPID is empty then that means we have an ACK for each server in the system.
+                // If HostsPID is empty then that means we have an Event for each server in the system.
                 if (hostsPID.isEmpty()) {
                   onDeliveryClockUpdate();
                   delayQueue.remove(event);
@@ -238,7 +240,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
   }
 
   /**
-   * <p> Sends a event that extends the {@link ds.assignment.multicast.lamport.LamportEvent}.</p>
+   * <p> Sends a event that extends the {@link ds.assignment.multicast.lamport.LamportEvent} via multicast.</p>
    * <p>
    * Currently supported events are:
    * <ul>
@@ -251,14 +253,14 @@ public class MulticastService extends lamportMsgHandlerImplBase {
    */
   public void sendEvent(LamportEvent event) {
     if (event instanceof AckEvent) {
-      sendAck(hostAddr, (AckEvent) event);
       for (String target : hosts) sendAck(target, (AckEvent) event);
+      sendAck(hostAddr, (AckEvent) event);
     } else if (event instanceof GetEvent) {
-      sendGet(hostAddr, (GetEvent) event);
       for (String target : hosts) sendGet(target, (GetEvent) event);
+      sendGet(hostAddr, (GetEvent) event);
     } else if (event instanceof PutEvent) {
-      sendPut(hostAddr, (PutEvent) event);
       for (String target : hosts) sendPut(target, (PutEvent) event);
+      sendPut(hostAddr, (PutEvent) event);
     } else {
       System.err.println(
         "Unexpected instance of " + LamportEvent.class.getName() + " Received!"
@@ -412,9 +414,10 @@ public class MulticastService extends lamportMsgHandlerImplBase {
           while (in.hasNext()) {
             switch (in.next()) {
               case "send":
+                long updatedClock = onSndClockUpdate(); // Update Lamport Clock
                 var ev = new GetEvent(
                   pid,
-                  logical_clock,
+                  updatedClock,
                   eventCounter,
                   rand.nextInt(5000)
                 );
@@ -453,7 +456,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
         System.err.println("STATE_BOOLEAN must be true or false");
         return;
       }
-      
+
       var service = new MulticastService(
         args[0],
         Integer.parseInt(args[2]),
