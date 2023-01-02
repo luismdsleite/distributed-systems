@@ -307,7 +307,7 @@ public class GossipService extends msgHandlerImplBase {
 
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         GossipService service = null;
         var args_ = Arrays.asList(args);
         if (args_.size() == 0) {
@@ -339,6 +339,7 @@ public class GossipService extends msgHandlerImplBase {
                 .addService(service)
                 .build()
                 .start();
+        server.awaitTermination();
     }
 
 }
