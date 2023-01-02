@@ -15,11 +15,11 @@ public class GetEvent extends LamportEvent {
   @Override
   public String toString() {
     return (
-      "Get Event " +
+      "Get Event ID:" +
       this.getEventID() +
-      " " +
+      " PID:" +
       this.getPid() +
-      " " +
+      " Clock:" +
       this.getLogical_clock() +
       " Key: " +
       key

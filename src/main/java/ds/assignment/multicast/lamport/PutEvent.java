@@ -27,15 +27,15 @@ public class PutEvent extends LamportEvent {
   @Override
   public String toString() {
     return (
-      "Put Event " +
+      "Put Event ID:" +
       this.getEventID() +
-      " " +
+      " PID:" +
       this.getPid() +
-      " " +
+      " Clock:" +
       this.getLogical_clock() +
       " Key: " +
       this.getKey() +
-      " Value: " +
+      " Value:" +
       this.getValue()
     );
   }

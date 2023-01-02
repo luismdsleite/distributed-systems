@@ -3,7 +3,7 @@ package ds.assignment.multicast.lamport;
 public class LamportEvent implements Comparable<LamportEvent> {
   private int pid; // Server which the event originated from.
   private long logical_clock; // Lamport Clock
-  private long eventID; // the <pid,eventID> pair works as a ID for each event. 
+  private long eventID; // the <pid,eventID> pair works as a ID for each event.
 
   public long getEventID() {
     return eventID;
@@ -42,6 +42,8 @@ public class LamportEvent implements Comparable<LamportEvent> {
 
   @Override
   public String toString() {
-    return "Generic Event " + eventID + " " + pid + " " + logical_clock;
+    return (
+      "Generic Event ID:" + eventID + " PID:" + pid + " Clock:" + logical_clock
+    );
   }
 }
