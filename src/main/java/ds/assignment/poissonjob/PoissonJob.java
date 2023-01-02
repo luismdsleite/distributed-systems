@@ -2,7 +2,7 @@
 package ds.assignment.poissonjob;
 
 /**
- * Job executed by the {@code ds.assignment.PoissonJobScheduler} multiple times
+ * Job executed by the {@link ds.assignment.poissonjob.PoissonJobScheduler} multiple times
  * with a poisson distribution
  */
 public interface PoissonJob {
