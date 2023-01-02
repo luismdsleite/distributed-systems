@@ -26,9 +26,10 @@ message Put{
 }
 
 message Ack{
-    int32 pid = 1;
+    int32 pid = 1; // Server who issued the Ack.
     int64 clock = 2;
-    int64 event_id = 3; 
+    int32 event_pid = 3; // Needed to uniquely identify an event.
+    int64 event_id = 4; // Needed to uniquely identify an event.
 }
 
 message Empty{

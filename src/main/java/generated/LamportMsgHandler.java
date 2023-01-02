@@ -1398,6 +1398,10 @@ public final class LamportMsgHandler {
       com.google.protobuf.MessageOrBuilder {
 
     /**
+     * <pre>
+     * Server who issued the Ack.
+     * </pre>
+     *
      * <code>optional int32 pid = 1;</code>
      */
     int getPid();
@@ -1408,7 +1412,20 @@ public final class LamportMsgHandler {
     long getClock();
 
     /**
-     * <code>optional int64 event_id = 3;</code>
+     * <pre>
+     * Needed to uniquely identify an event.
+     * </pre>
+     *
+     * <code>optional int32 event_pid = 3;</code>
+     */
+    int getEventPid();
+
+    /**
+     * <pre>
+     * Needed to uniquely identify an event.
+     * </pre>
+     *
+     * <code>optional int64 event_id = 4;</code>
      */
     long getEventId();
   }
@@ -1426,6 +1443,7 @@ public final class LamportMsgHandler {
     private Ack() {
       pid_ = 0;
       clock_ = 0L;
+      eventPid_ = 0;
       eventId_ = 0L;
     }
 
@@ -1466,6 +1484,11 @@ public final class LamportMsgHandler {
             }
             case 24: {
 
+              eventPid_ = input.readInt32();
+              break;
+            }
+            case 32: {
+
               eventId_ = input.readInt64();
               break;
             }
@@ -1495,6 +1518,10 @@ public final class LamportMsgHandler {
     public static final int PID_FIELD_NUMBER = 1;
     private int pid_;
     /**
+     * <pre>
+     * Server who issued the Ack.
+     * </pre>
+     *
      * <code>optional int32 pid = 1;</code>
      */
     public int getPid() {
@@ -1510,10 +1537,27 @@ public final class LamportMsgHandler {
       return clock_;
     }
 
-    public static final int EVENT_ID_FIELD_NUMBER = 3;
+    public static final int EVENT_PID_FIELD_NUMBER = 3;
+    private int eventPid_;
+    /**
+     * <pre>
+     * Needed to uniquely identify an event.
+     * </pre>
+     *
+     * <code>optional int32 event_pid = 3;</code>
+     */
+    public int getEventPid() {
+      return eventPid_;
+    }
+
+    public static final int EVENT_ID_FIELD_NUMBER = 4;
     private long eventId_;
     /**
-     * <code>optional int64 event_id = 3;</code>
+     * <pre>
+     * Needed to uniquely identify an event.
+     * </pre>
+     *
+     * <code>optional int64 event_id = 4;</code>
      */
     public long getEventId() {
       return eventId_;
@@ -1537,8 +1581,11 @@ public final class LamportMsgHandler {
       if (clock_ != 0L) {
         output.writeInt64(2, clock_);
       }
+      if (eventPid_ != 0) {
+        output.writeInt32(3, eventPid_);
+      }
       if (eventId_ != 0L) {
-        output.writeInt64(3, eventId_);
+        output.writeInt64(4, eventId_);
       }
     }
 
@@ -1555,9 +1602,13 @@ public final class LamportMsgHandler {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(2, clock_);
       }
+      if (eventPid_ != 0) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(3, eventPid_);
+      }
       if (eventId_ != 0L) {
         size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(3, eventId_);
+          .computeInt64Size(4, eventId_);
       }
       memoizedSize = size;
       return size;
@@ -1579,6 +1630,8 @@ public final class LamportMsgHandler {
           == other.getPid());
       result = result && (getClock()
           == other.getClock());
+      result = result && (getEventPid()
+          == other.getEventPid());
       result = result && (getEventId()
           == other.getEventId());
       return result;
@@ -1596,6 +1649,8 @@ public final class LamportMsgHandler {
       hash = (37 * hash) + CLOCK_FIELD_NUMBER;
       hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
           getClock());
+      hash = (37 * hash) + EVENT_PID_FIELD_NUMBER;
+      hash = (53 * hash) + getEventPid();
       hash = (37 * hash) + EVENT_ID_FIELD_NUMBER;
       hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
           getEventId());
@@ -1721,6 +1776,8 @@ public final class LamportMsgHandler {
 
         clock_ = 0L;
 
+        eventPid_ = 0;
+
         eventId_ = 0L;
 
         return this;
@@ -1747,6 +1804,7 @@ public final class LamportMsgHandler {
         generated.LamportMsgHandler.Ack result = new generated.LamportMsgHandler.Ack(this);
         result.pid_ = pid_;
         result.clock_ = clock_;
+        result.eventPid_ = eventPid_;
         result.eventId_ = eventId_;
         onBuilt();
         return result;
@@ -1795,6 +1853,9 @@ public final class LamportMsgHandler {
         if (other.getClock() != 0L) {
           setClock(other.getClock());
         }
+        if (other.getEventPid() != 0) {
+          setEventPid(other.getEventPid());
+        }
         if (other.getEventId() != 0L) {
           setEventId(other.getEventId());
         }
@@ -1826,12 +1887,20 @@ public final class LamportMsgHandler {
 
       private int pid_ ;
       /**
+       * <pre>
+       * Server who issued the Ack.
+       * </pre>
+       *
        * <code>optional int32 pid = 1;</code>
        */
       public int getPid() {
         return pid_;
       }
       /**
+       * <pre>
+       * Server who issued the Ack.
+       * </pre>
+       *
        * <code>optional int32 pid = 1;</code>
        */
       public Builder setPid(int value) {
@@ -1841,6 +1910,10 @@ public final class LamportMsgHandler {
         return this;
       }
       /**
+       * <pre>
+       * Server who issued the Ack.
+       * </pre>
+       *
        * <code>optional int32 pid = 1;</code>
        */
       public Builder clearPid() {
@@ -1876,15 +1949,61 @@ public final class LamportMsgHandler {
         return this;
       }
 
+      private int eventPid_ ;
+      /**
+       * <pre>
+       * Needed to uniquely identify an event.
+       * </pre>
+       *
+       * <code>optional int32 event_pid = 3;</code>
+       */
+      public int getEventPid() {
+        return eventPid_;
+      }
+      /**
+       * <pre>
+       * Needed to uniquely identify an event.
+       * </pre>
+       *
+       * <code>optional int32 event_pid = 3;</code>
+       */
+      public Builder setEventPid(int value) {
+        
+        eventPid_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * Needed to uniquely identify an event.
+       * </pre>
+       *
+       * <code>optional int32 event_pid = 3;</code>
+       */
+      public Builder clearEventPid() {
+        
+        eventPid_ = 0;
+        onChanged();
+        return this;
+      }
+
       private long eventId_ ;
       /**
-       * <code>optional int64 event_id = 3;</code>
+       * <pre>
+       * Needed to uniquely identify an event.
+       * </pre>
+       *
+       * <code>optional int64 event_id = 4;</code>
        */
       public long getEventId() {
         return eventId_;
       }
       /**
-       * <code>optional int64 event_id = 3;</code>
+       * <pre>
+       * Needed to uniquely identify an event.
+       * </pre>
+       *
+       * <code>optional int64 event_id = 4;</code>
        */
       public Builder setEventId(long value) {
         
@@ -1893,7 +2012,11 @@ public final class LamportMsgHandler {
         return this;
       }
       /**
-       * <code>optional int64 event_id = 3;</code>
+       * <pre>
+       * Needed to uniquely identify an event.
+       * </pre>
+       *
+       * <code>optional int64 event_id = 4;</code>
        */
       public Builder clearEventId() {
         
@@ -2348,12 +2471,13 @@ public final class LamportMsgHandler {
       "\013\n\003pid\030\001 \001(\005\022\r\n\005clock\030\002 \001(\003\022\020\n\010event_id\030" +
       "\003 \001(\003\022\013\n\003key\030\004 \001(\003\"O\n\003Put\022\013\n\003pid\030\001 \001(\005\022\r" +
       "\n\005clock\030\002 \001(\003\022\020\n\010event_id\030\003 \001(\003\022\013\n\003key\030\004" +
-      " \001(\003\022\r\n\005value\030\005 \001(\t\"3\n\003Ack\022\013\n\003pid\030\001 \001(\005\022" +
-      "\r\n\005clock\030\002 \001(\003\022\020\n\010event_id\030\003 \001(\003\"\007\n\005Empt" +
-      "y2\205\001\n\021lamportMsgHandler\022$\n\010getValue\022\n.pr" +
-      "oto.Get\032\014.proto.Empty\022$\n\010putValue\022\n.prot" +
-      "o.Put\032\014.proto.Empty\022$\n\010ackEvent\022\n.proto." +
-      "Ack\032\014.proto.EmptyB\013\n\tgeneratedb\006proto3"
+      " \001(\003\022\r\n\005value\030\005 \001(\t\"F\n\003Ack\022\013\n\003pid\030\001 \001(\005\022" +
+      "\r\n\005clock\030\002 \001(\003\022\021\n\tevent_pid\030\003 \001(\005\022\020\n\010eve" +
+      "nt_id\030\004 \001(\003\"\007\n\005Empty2\205\001\n\021lamportMsgHandl" +
+      "er\022$\n\010getValue\022\n.proto.Get\032\014.proto.Empty" +
+      "\022$\n\010putValue\022\n.proto.Put\032\014.proto.Empty\022$" +
+      "\n\010ackEvent\022\n.proto.Ack\032\014.proto.EmptyB\013\n\t",
+      "generatedb\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -2384,7 +2508,7 @@ public final class LamportMsgHandler {
     internal_static_proto_Ack_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_proto_Ack_descriptor,
-        new java.lang.String[] { "Pid", "Clock", "EventId", });
+        new java.lang.String[] { "Pid", "Clock", "EventPid", "EventId", });
     internal_static_proto_Empty_descriptor =
       getDescriptor().getMessageTypes().get(3);
     internal_static_proto_Empty_fieldAccessorTable = new
