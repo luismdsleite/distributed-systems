@@ -9,6 +9,7 @@ import generated.MsgHandler.Empty;
 import generated.MsgHandler.Msg;
 import generated.msgHandlerGrpc.msgHandlerBlockingStub;
 import generated.msgHandlerGrpc.msgHandlerImplBase;
+import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -22,6 +23,7 @@ import io.grpc.stub.StreamObserver;
 public class TokenService extends msgHandlerImplBase {
   private String hostAddr; // IP to host the service on.
   private String nextHost; // IP to send token to.
+  private ManagedChannel nextHostChannel; // gRPC channel to the next host.
   private volatile Boolean isLocked; // Locked or Unlocked.
   private boolean wasLocked = true; // Used only to know when to print "token unlocked" message.
   private static final int PORT = 6666; // Port server is being hosted on.
@@ -31,8 +33,20 @@ public class TokenService extends msgHandlerImplBase {
     this.hostAddr = hostAddr;
     this.nextHost = nextHost;
     this.isLocked = startLocked;
+    nextHostChannel = establishChannel();
     lockStateThread = changeLockStateThread();
     lockStateThread.start();
+  }
+
+  /**
+   * Establishes a channel to the next host in the ring.
+   */
+  private ManagedChannel establishChannel() {
+    // Connect to the nextHost and send him the token. On Failure case retry
+    return ManagedChannelBuilder.forAddress(nextHost, PORT)
+        .usePlaintext()
+        .keepAliveWithoutCalls(true)
+        .build();
   }
 
   public TokenService(String hostAddr, String nextHost) {
@@ -71,12 +85,9 @@ public class TokenService extends msgHandlerImplBase {
     }
 
     // Connect to the nextHost and send him the token. On Failure case retry
-    var channel = ManagedChannelBuilder.forAddress(nextHost, PORT)
-        .usePlaintext()
-        .build();
     while (true) {
       try {
-        msgHandlerBlockingStub handlerStub = msgHandlerGrpc.newBlockingStub(channel);
+        msgHandlerBlockingStub handlerStub = msgHandlerGrpc.newBlockingStub(nextHostChannel);
         long newToken = Long.valueOf(token) + 1;
         Msg newTokenMsg = Msg.newBuilder().setMsg("" + newToken).build();
         handlerStub.sendMsg(newTokenMsg);
