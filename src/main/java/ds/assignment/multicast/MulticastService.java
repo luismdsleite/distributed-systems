@@ -67,7 +67,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
    */
   private void establishChannels() {
     for (String host : hosts) {
-      // Connect to the host and send him the Ack msg. On Failure case retry.
+      // Connect to the host.
       var channel = ManagedChannelBuilder
           .forAddress(host, PORT)
           .usePlaintext()
