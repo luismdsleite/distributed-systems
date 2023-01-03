@@ -14,26 +14,25 @@ import ds.assignment.poissonjob.PoissonJob;
 import generated.msgHandlerGrpc;
 import generated.MsgHandler.Msg;
 import generated.msgHandlerGrpc.msgHandlerBlockingStub;
+import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
 public class SendWords implements PoissonJob {
     private final List<String> strings;
-    private String host;
-    private int port;
+    private ManagedChannel channel;
     private Random rng;
 
     /**
      * PoissonJob to send words to a server via gRPC.
      * 
-     * @param words words sent via gRPC to the server.
-     * @param host  IPv4 of the server.
-     * @param port  UDP port.
+     * @param words   words sent via gRPC to the server.
+     * @param channel channel to send the word to.
+     * @param port    UDP port.
      * @throws IOException
      */
-    SendWords(List<String> words, String host, int port, Random rng){
+    SendWords(List<String> words, ManagedChannel channel, Random rng) {
         this.strings = words;
-        this.host = host;
-        this.port = port;
+        this.channel = channel;
         this.rng = rng;
     }
 
@@ -43,9 +42,6 @@ public class SendWords implements PoissonJob {
 
             var word = strings.get(rng.nextInt(strings.size()));
             // Connect to the target and send him the word.
-            var channel = ManagedChannelBuilder.forAddress(host, port)
-                    .usePlaintext()
-                    .build();
             msgHandlerBlockingStub handlerStub = msgHandlerGrpc.newBlockingStub(channel);
             Msg newMsg = Msg.newBuilder().setMsg(word).build();
             handlerStub.sendMsg(newMsg);

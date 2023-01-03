@@ -6,12 +6,14 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 
 import ds.assignment.HostChecker;
 import ds.assignment.poissonjob.PoissonJobScheduler;
@@ -20,6 +22,7 @@ import generated.MsgHandler.Empty;
 import generated.MsgHandler.Msg;
 import generated.msgHandlerGrpc.msgHandlerBlockingStub;
 import generated.msgHandlerGrpc.msgHandlerImplBase;
+import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -35,6 +38,7 @@ public class GossipService extends msgHandlerImplBase {
     public static final int PORT = 6667; // Port server is being hosted on.
     public static final int MAX_MSG_LENGTH = 512; // Maximum msg size (in bytes)
     private static final Random random = new Random();
+    private final ConcurrentHashMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
 
     /** Input Thread parameters. */
     private double msgDropChance = 0.20; // Chance of a msg already present in the wordsSet to be dropped.
@@ -56,12 +60,27 @@ public class GossipService extends msgHandlerImplBase {
         start(startPoisson);
     }
 
+    public GossipService(String hostAddr, List<String> registeredUsers, boolean startPoisson) {
+        this(hostAddr, startPoisson);
+        this.hostsSet.addAll(registeredUsers);
+        startChannels();
+    }
+
+    public GossipService(String hostAddr, List<String> registeredUsers) {
+        this(hostAddr, registeredUsers, true);
+    }
+
+    private void start(boolean startPoisson) {
+        channels.put(hostAddr, openChannelWithoutFail(hostAddr));// Used by the "send" command and the SendWords job
+        startThreads(startPoisson);
+    }
+
     /**
      * Starts all the threads.
      * 
      * @throws IOException
      */
-    private void start(boolean startPoisson) {
+    private void startThreads(boolean startPoisson) {
         System.out.println("Starting " + hostAddr + ":" + PORT);
         var inputThread = stdinThread();
         inputThread.start();
@@ -70,13 +89,49 @@ public class GossipService extends msgHandlerImplBase {
 
     }
 
-    public GossipService(String hostAddr, List<String> registeredUsers, boolean startPoisson) {
-        this(hostAddr, startPoisson);
-        this.hostsSet.addAll(registeredUsers);
+    /**
+     * Create a channel for every host in {@code hostsSet}. Only executed if the
+     * constructor is given a predefined hostsSet.
+     */
+    private void startChannels() {
+        var it = hostsSet.iterator();
+        while (it.hasNext()) {
+            String host = it.next();
+            channels.put(host, openChannelWithoutFail(host));
+        }
     }
 
-    public GossipService(String hostAddr, List<String> registeredUsers) {
-        this(hostAddr, registeredUsers, true);
+    /**
+     * Tries to open a channel to {@code target}. It keeps trying forever until it
+     * succeeds.
+     * 
+     * @param target IPv4 to open the channel to.
+     * @return
+     */
+    private ManagedChannel openChannelWithoutFail(String target) {
+        ManagedChannel channel;
+        while (true) {
+            try {
+                channel = openChannel(target);
+                break;
+            } catch (Exception e) {
+                System.out.println("Failed to open channel to host " + target + " trying again!");
+            }
+        }
+        return channel;
+    }
+
+    /**
+     * Tries to open a channel to the {@code target}
+     * 
+     * @param target IPv4 to open the channel to.
+     * @return
+     */
+    private ManagedChannel openChannel(String target) {
+        return ManagedChannelBuilder.forAddress(target, PORT)
+                .usePlaintext()
+                .keepAliveWithoutCalls(true)
+                .build();
     }
 
     /**
@@ -125,9 +180,7 @@ public class GossipService extends msgHandlerImplBase {
 
         for (String target : hostsToGossip) {
             // Connect to the target and send him the word.
-            var channel = ManagedChannelBuilder.forAddress(target, PORT)
-                    .usePlaintext()
-                    .build();
+            var channel = channels.get(target);
             msgHandlerBlockingStub handlerStub = msgHandlerGrpc.newBlockingStub(channel);
             handlerStub.sendMsg(request);
         }
@@ -144,13 +197,14 @@ public class GossipService extends msgHandlerImplBase {
      * <li><b>register {ipv4}/unregister {ipv4}</b>: Adds/removes the host.
      * <li><b>send {ipv4} {msg}</b>: Sends a msg to a certain host (Used for testing
      * purposes).
-     * <li><b>get all</b>: Equivalent to executing all get commands.
+     * <li><b>get all</b>: Equivalent to executing all get commands minus <b>get channels</b>.
      * <li><b>get words</b>: List of the received words.
      * <li><b>get hosts</b>: List of all registered hosts.
      * <li><b>get banned</b>: List of words that are not propagated.
      * <li><b>get gossipRate</b>: nº of randomly chosen hosts a message is
      * propagated to.
      * <li><b>get dropChance</b>: chance of a word retransmission being ignored.
+     * <li><b>get channels</b>: print all {@link io.grpc.ManagedChannel} stored.
      * <li><b>set gossipRate</b>: changes gossipRate param.
      * <li><b>set dropChance</b>: changes dropChance param.
      * </ul>
@@ -176,8 +230,16 @@ public class GossipService extends msgHandlerImplBase {
                                         System.out.println(
                                                 "Host " + arg + " was already registered");
                                     } else {
-                                        hostsSet.add(arg);
-                                        System.out.println("Added Host " + arg);
+                                        try {
+                                            var channel = openChannel(arg);
+                                            channels.put(arg, channel);
+                                            hostsSet.add(arg);
+                                            System.out.println("Added Host " + arg);
+                                        } catch (Exception e) {
+                                            System.err.println(
+                                                    "Failed To register host " + arg + " could not open channel");
+                                        }
+
                                     }
                                     continue;
                                 case "unregister":
@@ -189,7 +251,15 @@ public class GossipService extends msgHandlerImplBase {
                                     if (!hostsSet.remove(arg)) {
                                         System.out.println("Host " + arg + " is not registered");
                                     } else {
-                                        System.out.println("Removed Host " + arg);
+                                        try {
+                                            System.out.println("Removed Host " + arg);
+                                            var channelToTerminate = channels.get(arg);
+                                            channelToTerminate.shutdownNow();
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                            System.err.println("Failed to unregister " + arg);
+                                        }
+                                        channels.remove(arg);
                                     }
                                     continue;
                                 case "send":
@@ -200,12 +270,16 @@ public class GossipService extends msgHandlerImplBase {
                                     }
                                     String msgStr = in.next();
                                     // Connect to the target and send him the word.
-                                    var channel = ManagedChannelBuilder.forAddress(arg, PORT)
-                                            .usePlaintext()
-                                            .build();
-                                    msgHandlerBlockingStub handlerStub = msgHandlerGrpc.newBlockingStub(channel);
-                                    Msg newMsg = Msg.newBuilder().setMsg(msgStr).build();
-                                    handlerStub.sendMsg(newMsg);
+                                    var channel = channels.get(arg);
+                                    try {
+                                        msgHandlerBlockingStub handlerStub = msgHandlerGrpc.newBlockingStub(channel);
+                                        Msg newMsg = Msg.newBuilder().setMsg(msgStr).build();
+                                        handlerStub.sendMsg(newMsg);
+
+                                    } catch (Exception e) {
+                                        System.err.println("Failed to send msg");
+                                        e.printStackTrace();
+                                    }
                                     continue;
                                 case "set":
                                     switch (arg) {
@@ -251,6 +325,8 @@ public class GossipService extends msgHandlerImplBase {
                                             continue;
                                         case "dropChance":
                                             System.out.println(msgDropChance);
+                                        case "channels":
+                                            System.out.println(channels);
                                             continue;
                                         case "all":
                                             System.out.println("No. of Hosts = " + hostsSet.size());
@@ -286,6 +362,7 @@ public class GossipService extends msgHandlerImplBase {
      * @throws IOException if it failed to get a UDP socket.
      */
     private void poissonWordsGenerator() {
+
         Random wordsRNG = new Random();
         List<String> words = new ArrayList<>();
         try {
@@ -296,8 +373,9 @@ public class GossipService extends msgHandlerImplBase {
                 words.add(scanner.next());
             }
             scanner.close();
+
             var scheduler = new PoissonJobScheduler(LAMBDA, new Random(),
-                    new SendWords(words, hostAddr, PORT, wordsRNG));
+                    new SendWords(words, channels.get(hostAddr), wordsRNG));
             scheduler.schedulerThread().start();
             System.out.println("Started Poisson Word Generator Thread.");
         } catch (FileNotFoundException e) {
