@@ -16,11 +16,7 @@ public class AckEvent extends LamportEvent {
   @Override
   public String toString() {
     return (
-      "Ack Event ID:" +
-      super.getEventID() +
-      " Event_PID:" +
-      super.getEventID() +
-      " PID:" +
+      "Ack PID:" +
       this.getPid() +
       " Clock:" +
       this.getLogical_clock()
