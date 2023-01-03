@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
@@ -46,6 +47,9 @@ public class MulticastService extends lamportMsgHandlerImplBase {
   private final PriorityBlockingQueue<LamportEvent> delayQueue = new PriorityBlockingQueue<>();
   public static final int PORT = 6668; // Port Listening for gRPC connections.
   private final HashMap<String, ManagedChannel> channels = new HashMap<>();
+  private final ConcurrentLinkedQueue<LamportEvent> eventsToSend = new ConcurrentLinkedQueue<>();
+
+  public static final int ACK_FLUSH_INTERVAL = 10; // Every 10 seconds flushes Ack messages
 
   public MulticastService(String hostAddr, int pid, List<String> hosts) {
     this.hostAddr = hostAddr;
@@ -54,12 +58,19 @@ public class MulticastService extends lamportMsgHandlerImplBase {
     logical_clock = 0;
     establishChannels();
     System.out.println("Established channels with all the hosts");
+    Thread senderThread = senderThread();
+    senderThread.start();
+    System.out.println("Started Sender Thread");
     Thread stdinThread = stdinThread();
     stdinThread.start();
     System.out.println("Started Input Thread");
     Thread delayQueueManagerThread = delayQueueManagerThread();
-    System.out.println("Started Delay Queue Manager Thread");
     delayQueueManagerThread.start();
+    System.out.println("Started Delay Queue Manager Thread");
+    Thread ackFlusher = flushAcksThread();
+    ackFlusher.start();
+    System.out.println("Started Ack Flusher Thread");
+
   }
 
   /**
@@ -112,8 +123,10 @@ public class MulticastService extends lamportMsgHandlerImplBase {
     var eventID = request.getEventId();
     var newClock = onRcvClockUpdate(rcvClock);
     var event = new GetEvent(rcvPid, rcvClock, eventID, request.getKey());
+    newClock = onSndClockUpdate();
+    eventsToSend.add(new AckEvent(pid, newClock, eventID, rcvPid));
     delayQueue.add(event);
-    sendAcks(rcvPid, newClock, eventID);
+    // sendAcks(rcvPid, newClock, eventID);
     responseObserver.onNext(Empty.newBuilder().build());
     responseObserver.onCompleted();
   }
@@ -133,8 +146,10 @@ public class MulticastService extends lamportMsgHandlerImplBase {
         eventID,
         request.getKey(),
         request.getValue());
+    eventsToSend.add(new AckEvent(pid, newClock, eventID, rcvPid));
+    newClock = onSndClockUpdate();
     delayQueue.add(event);
-    sendAcks(rcvPid, newClock, eventID);
+    // sendAcks(rcvPid, newClock, eventID);
     responseObserver.onNext(Empty.newBuilder().build());
     responseObserver.onCompleted();
   }
@@ -146,7 +161,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
    * @return updated Lamport clock.
    */
   private long onRcvClockUpdate(long logical_clock) {
-    return (this.logical_clock = Math.max(this.logical_clock, logical_clock) + 1);
+    return (this.logical_clock = Math.max(this.logical_clock, logical_clock));
   }
 
   /**
@@ -231,10 +246,11 @@ public class MulticastService extends lamportMsgHandlerImplBase {
               var event = delayQueue.peek();
               if (event == null)
                 continue; // Delay queue is empty
-
+              // System.out.println("Queue before:" + delayQueue);
               // If we receive an Ack Event simply remove it
               if (event instanceof AckEvent) {
                 delayQueue.remove(event);
+                // System.out.println("Queue after removing Ack:" + delayQueue);
                 continue;
               }
               // Lock the queue
@@ -246,8 +262,11 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                   for (int i = 0; i < hosts.size(); i++) {
                     hostsPID.add(i);
                   }
-                  // Remove my own pid from the set.
-                  hostsPID.remove(pid);
+
+                  // Remove event pid from the set.
+                  // hostsPID.remove(event.getPid());
+
+                  // hostsPID.remove(pid);
 
                   var it = delayQueue.iterator();
                   it.next(); // Ignore the head of the queue
@@ -262,6 +281,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                     delayQueue.remove(event);
                     deliverEvent(event);
                   }
+                  // System.out.println("Queue after removing GetorPut:" + delayQueue);
                   continue;
                 }
               }
@@ -274,6 +294,50 @@ public class MulticastService extends lamportMsgHandlerImplBase {
           }
         });
   }
+
+  /**
+   * Thread responsible for any outgoing messages. The reason why this thread must
+   * be responsible for sending msg is to assure a FIFO channel.
+   */
+  private Thread senderThread() {
+    return new Thread(
+        new Runnable() {
+          public void run() {
+            while (true) {
+              var evToSend = eventsToSend.poll();
+              if (evToSend != null) {
+                sendEvent(evToSend);
+                // System.out.println("Sent " + evToSend);
+              }
+            }
+          }
+        });
+  }
+
+  
+  /**
+   * Injects an Ack message every {@value #ACK_FLUSH_INTERVAL} to assure that no message get stuck in the delay queue.
+   */
+  private Thread flushAcksThread() {
+    return new Thread(
+        new Runnable() {
+          public void run() {
+            while (true) {
+              try {
+                Thread.sleep(ACK_FLUSH_INTERVAL*1000);
+              } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+              }
+              eventsToSend.add(new AckEvent(pid, onSndClockUpdate(), -1, -1));
+              System.out.println("Flushed Ack Msg");
+
+            }
+          }
+        });
+  }
+
+
 
   /**
    * <p>
@@ -297,13 +361,13 @@ public class MulticastService extends lamportMsgHandlerImplBase {
         sendAck(target, (AckEvent) event);
       sendAck(hostAddr, (AckEvent) event);
     } else if (event instanceof GetEvent) {
+      sendGet(hostAddr, (GetEvent) event);
       for (String target : hosts)
         sendGet(target, (GetEvent) event);
-      sendGet(hostAddr, (GetEvent) event);
     } else if (event instanceof PutEvent) {
+      sendPut(hostAddr, (PutEvent) event);
       for (String target : hosts)
         sendPut(target, (PutEvent) event);
-      sendPut(hostAddr, (PutEvent) event);
     } else {
       System.err.println(
           "Unexpected instance of " + LamportEvent.class.getName() + " Received!");
@@ -456,12 +520,14 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                       updatedClock,
                       eventCounter,
                       rand.nextInt(5000));
-                  sendEvent(ev);
+                  eventsToSend.add(ev);
                   eventCounter++;
                   break;
                 case "queue":
                   System.out.println("Queue: " + delayQueue);
                   break;
+                case "test":
+                  delayQueue.add(new GetEvent(1, 1, 0, 4767));
                 default:
                   break;
               }
@@ -475,7 +541,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
       throws IOException, InterruptedException {
     var args_ = Arrays.asList(args);
 
-    if (args_.size() != 4) {
+    if (args_.size() < 4) {
       System.err.println(
           MulticastService.class.getName() +
               " HOST_ADDRESS STATE_BOOLEAN PID [PEERS_ADDRESSES]");
