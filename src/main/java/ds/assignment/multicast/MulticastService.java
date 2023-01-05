@@ -4,6 +4,7 @@ import ds.assignment.multicast.lamport.AckEvent;
 import ds.assignment.multicast.lamport.GetEvent;
 import ds.assignment.multicast.lamport.LamportEvent;
 import ds.assignment.multicast.lamport.PutEvent;
+import ds.assignment.poissonjob.PoissonJobScheduler;
 import generated.LamportMsgHandler.Ack;
 import generated.LamportMsgHandler.Empty;
 import generated.LamportMsgHandler.Get;
@@ -44,13 +45,21 @@ public class MulticastService extends lamportMsgHandlerImplBase {
    * No need for volatile keyword since PriorityBlockingQueue is already a
    * thread-safe class.
    */
-  private final PriorityBlockingQueue<LamportEvent> delayQueue = new PriorityBlockingQueue<>();
+  private final ConcurrentLinkedQueue<LamportEvent> delayQueue = new ConcurrentLinkedQueue<>();
   public static final int PORT = 6668; // Port Listening for gRPC connections.
   private final HashMap<String, ManagedChannel> channels = new HashMap<>();
   private final ConcurrentLinkedQueue<LamportEvent> eventsToSend = new ConcurrentLinkedQueue<>();
   private final Random rand = new Random();
+  private final PriorityBlockingQueue<LamportEvent> deliveredQueue = new PriorityBlockingQueue<>();
+  private Thread poissonReqGenerator;
 
-  public MulticastService(String hostAddr, int pid, List<String> hosts) {
+  /**
+   * Lambda of the poissonReqGenerator Thread.
+   * Currently on average generates 1 event per 30 seconds.
+   */
+  private static final double LAMBDA = 30 / (double) 30;
+
+  public MulticastService(String hostAddr, int pid, boolean startPoissonThread, List<String> hosts) {
     this.hostAddr = hostAddr;
     this.hosts = hosts;
     this.pid = pid;
@@ -66,6 +75,11 @@ public class MulticastService extends lamportMsgHandlerImplBase {
     Thread delayQueueManagerThread = delayQueueManagerThread();
     delayQueueManagerThread.start();
     System.out.println("Started Delay Queue Manager Thread");
+    if (startPoissonThread) {
+      poissonReqGenerator = poissonRequestsGenerator(LAMBDA);
+      poissonReqGenerator.start();
+      System.out.println("Started Poisson Thread");
+    }
 
   }
 
@@ -207,6 +221,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
   }
 
   private void deliverEvent(LamportEvent event) {
+    deliveredQueue.add(event);
     System.out.println("Delivered:" + event);
   }
 
@@ -471,6 +486,14 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                 case "queue":
                   System.out.println("Queue: " + delayQueue);
                   break;
+                case "delivered":
+                  System.out.println("Delivered: " + deliveredQueue);
+                  break;
+                case "pause":
+                  poissonReqGenerator.suspend();
+                case "resume":
+                  poissonReqGenerator.resume();
+                  break;
                 default:
                   break;
               }
@@ -478,6 +501,17 @@ public class MulticastService extends lamportMsgHandlerImplBase {
             in.close();
           }
         });
+  }
+
+  /**
+   * Generates random requests at a poisson distribution rate
+   * 
+   * @param LAMBDA Lambda value of the poisson distribution
+   * @return
+   */
+  private Thread poissonRequestsGenerator(double LAMBDA) {
+    var scheduler = new PoissonJobScheduler(LAMBDA, rand, new SendRequests(this));
+    return scheduler.schedulerThread();
   }
 
   /**
@@ -526,6 +560,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
       var service = new MulticastService(
           args[0],
           Integer.parseInt(args[2]),
+          poissonState,
           args_.subList(3, args_.size()));
       var server = NettyServerBuilder
           .forAddress(new InetSocketAddress(args[0], PORT))
