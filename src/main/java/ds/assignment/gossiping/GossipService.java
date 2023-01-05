@@ -45,6 +45,7 @@ public class GossipService extends msgHandlerImplBase {
     private int gossipRate = 3; // How many hosts to gossip at a time.
 
     /** Poisson Words Generator Thread parameters. */
+    private Thread poissonThread;
 
     // Lambda of the poissonWordsGenerator.
     // Currently on average generates 1 event per 30 seconds.
@@ -84,8 +85,11 @@ public class GossipService extends msgHandlerImplBase {
         System.out.println("Starting " + hostAddr + ":" + PORT);
         var inputThread = stdinThread();
         inputThread.start();
-        if (startPoisson)
-            poissonWordsGenerator();
+        poissonThread = poissonWordsGenerator();
+        if (startPoisson) {
+            poissonThread.start();
+            System.out.println("Started Poisson Word Generator Thread.");
+        }
 
     }
 
@@ -197,7 +201,8 @@ public class GossipService extends msgHandlerImplBase {
      * <li><b>register {ipv4}/unregister {ipv4}</b>: Adds/removes the host.
      * <li><b>send {ipv4} {msg}</b>: Sends a msg to a certain host (Used for testing
      * purposes).
-     * <li><b>get all</b>: Equivalent to executing all get commands minus <b>get channels</b>.
+     * <li><b>get all</b>: Equivalent to executing all get commands minus <b>get
+     * channels</b>.
      * <li><b>get words</b>: List of the received words.
      * <li><b>get hosts</b>: List of all registered hosts.
      * <li><b>get banned</b>: List of words that are not propagated.
@@ -295,6 +300,19 @@ public class GossipService extends msgHandlerImplBase {
                                             System.err.println("Invalid command: " + cmd + " " + arg + "\n"
                                                     + "use \"get help\" to see all available commands");
                                             continue;
+                                        case "poisson":
+                                            var threadState = in.next();
+                                            switch (threadState) {
+                                                case "on":
+                                                    poissonThread.resume();
+                                                    System.out.println("Start Poisson Thread");
+                                                    break;
+                                                case "off":
+                                                    poissonThread.suspend();
+                                                    System.out.println("Stopped Poisson Thread");
+                                                    break;
+                                            }
+                                            continue;
                                     }
                                 case "get":
                                     switch (arg) {
@@ -361,8 +379,8 @@ public class GossipService extends msgHandlerImplBase {
      * @param lambda
      * @throws IOException if it failed to get a UDP socket.
      */
-    private void poissonWordsGenerator() {
-
+    private Thread poissonWordsGenerator() {
+        Thread thread = null;
         Random wordsRNG = new Random();
         List<String> words = new ArrayList<>();
         try {
@@ -376,12 +394,12 @@ public class GossipService extends msgHandlerImplBase {
 
             var scheduler = new PoissonJobScheduler(LAMBDA, new Random(),
                     new SendWords(words, channels.get(hostAddr), wordsRNG));
-            scheduler.schedulerThread().start();
-            System.out.println("Started Poisson Word Generator Thread.");
+            thread = scheduler.schedulerThread();
         } catch (FileNotFoundException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+        return thread;
 
     }
 
