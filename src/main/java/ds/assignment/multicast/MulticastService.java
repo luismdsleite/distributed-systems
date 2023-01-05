@@ -491,6 +491,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                   break;
                 case "pause":
                   poissonReqGenerator.suspend();
+                  break;
                 case "resume":
                   poissonReqGenerator.resume();
                   break;
