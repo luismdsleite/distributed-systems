@@ -45,12 +45,12 @@ public class MulticastService extends lamportMsgHandlerImplBase {
    * No need for volatile keyword since PriorityBlockingQueue is already a
    * thread-safe class.
    */
-  private final ConcurrentLinkedQueue<LamportEvent> delayQueue = new ConcurrentLinkedQueue<>();
+  private final PriorityBlockingQueue<LamportEvent> delayQueue = new PriorityBlockingQueue<>();
   public static final int PORT = 6668; // Port Listening for gRPC connections.
   private final HashMap<String, ManagedChannel> channels = new HashMap<>();
   private final ConcurrentLinkedQueue<LamportEvent> eventsToSend = new ConcurrentLinkedQueue<>();
   private final Random rand = new Random();
-  private final PriorityBlockingQueue<LamportEvent> deliveredQueue = new PriorityBlockingQueue<>();
+  private final ConcurrentLinkedQueue<LamportEvent> deliveredQueue = new ConcurrentLinkedQueue<>();
   private Thread poissonReqGenerator;
 
   /**
