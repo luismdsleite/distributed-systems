@@ -57,7 +57,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
    * Lambda of the poissonReqGenerator Thread.
    * Currently on average generates 1 event per 30 seconds.
    */
-  private static final double LAMBDA = 30 / (double) 30;
+  private static final double LAMBDA = 1 / (double) 30;
 
   public MulticastService(String hostAddr, int pid, boolean startPoissonThread, List<String> hosts) {
     this.hostAddr = hostAddr;
@@ -75,8 +75,8 @@ public class MulticastService extends lamportMsgHandlerImplBase {
     Thread delayQueueManagerThread = delayQueueManagerThread();
     delayQueueManagerThread.start();
     System.out.println("Started Delay Queue Manager Thread");
+    poissonReqGenerator = poissonRequestsGenerator(LAMBDA);
     if (startPoissonThread) {
-      poissonReqGenerator = poissonRequestsGenerator(LAMBDA);
       poissonReqGenerator.start();
       System.out.println("Started Poisson Thread");
     }
@@ -489,11 +489,19 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                 case "delivered":
                   System.out.println("Delivered: " + deliveredQueue);
                   break;
+                case "start":
+                  if (!poissonReqGenerator.isAlive()) {
+                    poissonReqGenerator.start();
+                    System.out.println("Started Poisson Thread");
+                  } else
+                    System.out.println("Poisson Thread is already alive");
                 case "pause":
                   poissonReqGenerator.suspend();
+                  System.out.println("Paused Thread");
                   break;
                 case "resume":
                   poissonReqGenerator.resume();
+                  System.out.println("Resumed Thread");
                   break;
                 default:
                   break;
