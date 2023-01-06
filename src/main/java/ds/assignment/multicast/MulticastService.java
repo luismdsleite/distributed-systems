@@ -194,32 +194,6 @@ public class MulticastService extends lamportMsgHandlerImplBase {
     return (this.logical_clock += 1);
   }
 
-  /**
-   * Sends a Ack msg to all hosts in the {@link #hosts} list, it also adds the Ack
-   * msg to the {@link #delayQueue}.
-   * 
-   * @param eventPID PID of the server who issued the Get/Put Event
-   * @param ackClock
-   * @param eventId
-   */
-  private void sendAcks(int eventPID, long ackClock, long eventId) {
-    // Add Ack Event to our own delay queue.
-    delayQueue.add(new AckEvent(this.pid, ackClock, eventId, eventPID));
-
-    // Create the Ack Msg and send it to every host.
-    Ack ackMsg = Ack
-        .newBuilder()
-        .setPid(this.pid)
-        .setClock(ackClock)
-        .setEventId(eventId)
-        .setEventPid(eventPID)
-        .build();
-    for (String target : hosts) {
-      // Connect to the target and send him the Ack msg. On Failure case retry.
-      sendAck(target, ackMsg);
-    }
-  }
-
   private void deliverEvent(LamportEvent event) {
     deliveredQueue.add(event);
     System.out.println("Delivered:" + event);
