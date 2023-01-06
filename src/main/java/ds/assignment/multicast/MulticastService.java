@@ -516,24 +516,16 @@ public class MulticastService extends lamportMsgHandlerImplBase {
   }
 
   /**
-   * Generate a random Get or Put request.
+   * Generate a random Put request.
    */
   public void generateRandomEvent() {
     long updatedClock = onSndClockUpdate(); // Update Lamport Clock
     LamportEvent ev;
-    if (rand.nextBoolean())
-      ev = new GetEvent(
-          pid,
-          updatedClock,
-          eventCounter,
-          rand.nextInt(5000));
-    else {
-      ev = new PutEvent(pid,
-          updatedClock,
-          eventCounter,
-          rand.nextInt(5000),
-          "POISSON");
-    }
+    ev = new PutEvent(pid,
+        updatedClock,
+        eventCounter,
+        rand.nextInt(5000),
+        "POISSON");
     eventsToSend.add(ev);
     eventCounter++;
 
