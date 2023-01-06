@@ -136,7 +136,6 @@ public class MulticastService extends lamportMsgHandlerImplBase {
     newClock = onSndClockUpdate();
     eventsToSend.add(new AckEvent(pid, newClock, eventID, rcvPid));
     delayQueue.add(event);
-    // sendAcks(rcvPid, newClock, eventID);
     responseObserver.onNext(Empty.newBuilder().build());
     responseObserver.onCompleted();
   }
@@ -159,7 +158,6 @@ public class MulticastService extends lamportMsgHandlerImplBase {
     newClock = onSndClockUpdate();
     eventsToSend.add(new AckEvent(pid, newClock, eventID, rcvPid));
     delayQueue.add(event);
-    // sendAcks(rcvPid, newClock, eventID);
     responseObserver.onNext(Empty.newBuilder().build());
     responseObserver.onCompleted();
   }
@@ -469,6 +467,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                     System.out.println("Started Poisson Thread");
                   } else
                     System.out.println("Poisson Thread is already alive");
+                  break;
                 case "pause":
                   poissonReqGenerator.suspend();
                   System.out.println("Paused Thread");
@@ -478,6 +477,7 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                   System.out.println("Resumed Thread");
                   break;
                 default:
+                  System.out.println("Invalid Command");
                   break;
               }
             }
