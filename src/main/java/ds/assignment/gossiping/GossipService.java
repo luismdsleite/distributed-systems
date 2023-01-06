@@ -303,6 +303,12 @@ public class GossipService extends msgHandlerImplBase {
                                         case "poisson":
                                             var threadState = in.next();
                                             switch (threadState) {
+                                                case "start":
+                                                    if (!poissonThread.isAlive()) {
+                                                        poissonThread.start();
+                                                        System.out.println("Started Poisson Thread");
+                                                    } else
+                                                        System.out.println("Poisson Thread is already alive");
                                                 case "on":
                                                     poissonThread.resume();
                                                     System.out.println("Start Poisson Thread");
