@@ -456,7 +456,9 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                   generateRandomEvent();
                   break;
                 case "queue":
-                  System.out.println("Queue: " + delayQueue);
+                  var sortedArray = delayQueue.toArray();
+                  Arrays.sort(sortedArray);
+                  System.out.println(Arrays.toString(sortedArray));
                   break;
                 case "delivered":
                   System.out.println("Delivered: " + deliveredQueue);
