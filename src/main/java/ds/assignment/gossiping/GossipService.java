@@ -212,6 +212,9 @@ public class GossipService extends msgHandlerImplBase {
      * <li><b>get channels</b>: print all {@link io.grpc.ManagedChannel} stored.
      * <li><b>set gossipRate</b>: changes gossipRate param.
      * <li><b>set dropChance</b>: changes dropChance param.
+     * <li><b>set poisson start</b>: starts the poisson thread.
+     * <li><b>set poisson on</b>: resumes the poisson thread.
+     * <li><b>set poisson off</b>: pauses the poisson thread.
      * </ul>
      */
     private Thread stdinThread() {
