@@ -1,3 +1,7 @@
+# Authors 
+  Joaquim Tiago (up201908075)
+  Luís Leite (up201906750)
+
 # Distributed Systems
 Implementation of 3 different types of distributed systems:
 -   Token Ring
@@ -7,6 +11,7 @@ Implementation of 3 different types of distributed systems:
 Details are available at [Practical Assignment](/practical_assignment_PT.pdf) (Although only in Portuguese).
 
 # Table of Contents
+- [Authors](#authors)
 - [Distributed Systems](#distributed-systems)
 - [Table of Contents](#table-of-contents)
 - [TokenRing](#tokenring)
