@@ -436,12 +436,15 @@ public class MulticastService extends lamportMsgHandlerImplBase {
   }
 
   /**
-   * Thread responsible for managing the lock/unlock TokenRing state.
+   * Thread responsible for executing commands.
    * Gathers input from stdin, accepts the following commands:
    * <ul>
-   * <li>"lock"/"unlock": locks/unlocks the token.
-   * <li>"startToken": Used to create the token, it create a token and sends it to
-   * itself.
+   * <li>"send": Generates a random request.
+   * <li>"queue": Prints the delay queue (All request that have not yet been delivered/discarded).
+   * <li>"delivered": Prints all delivered requests.
+   * <li>"startPoisson": Starts the poisson request generator (Assuming it was not started by default).
+   * <li>"pausePoisson": Pauses the poisson request generator.
+   * <li>"resumePoisson": Resumes the poisson request generator.
    * </ul>
    */
   private Thread stdinThread() {
@@ -463,18 +466,18 @@ public class MulticastService extends lamportMsgHandlerImplBase {
                 case "delivered":
                   System.out.println("Delivered: " + deliveredQueue);
                   break;
-                case "start":
+                case "startPoisson":
                   if (!poissonReqGenerator.isAlive()) {
                     poissonReqGenerator.start();
                     System.out.println("Started Poisson Thread");
                   } else
                     System.out.println("Poisson Thread is already alive");
                   break;
-                case "pause":
+                case "pausePoisson":
                   poissonReqGenerator.suspend();
                   System.out.println("Paused Thread");
                   break;
-                case "resume":
+                case "resumePoisson":
                   poissonReqGenerator.resume();
                   System.out.println("Resumed Thread");
                   break;
